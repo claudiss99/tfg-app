@@ -13,7 +13,7 @@ export default function LoginScreen() {
     setLoading(true);
     
     try {
-      // Autenticar al usuario
+      // Autenticar usuario
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -25,11 +25,65 @@ export default function LoginScreen() {
         return;
       }
 
+      const userId = authData.user.id;
+      console.log('=== DEBUG INFO ===');
+      console.log('Auth User ID:', userId);
+      console.log('Auth User Email:', authData.user.email);
+
+      // Verificar qué usuarios existen en la tabla
+      const { data: allUsers, error: allUsersError } = await supabase
+        .from('usuarios')
+        .select('id, email, role');
+      
+      console.log('Todos los usuarios en la tabla:', allUsers);
+      console.log('Error al obtener todos los usuarios:', allUsersError);
+
+      // Buscar el usuario específico
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      console.log('Datos del usuario específico:', userData);
+      console.log('Error del usuario específico:', userError);
+
       setLoading(false);
+
+      if (userError) {
+        console.error('Error obteniendo datos del usuario:', userError);
+        
+        const { data: userByEmail, error: emailError } = await supabase
+          .from('usuarios')
+          .select('id, role')
+          .eq('email', authData.user.email)
+          .single();
+        
+        console.log('Búsqueda por email:', userByEmail);
+        console.log('Error búsqueda por email:', emailError);
+        
+        if (emailError) {
+          Alert.alert('Error', 'Usuario no encontrado en la base de datos');
+          return;
+        } else {
+          Alert.alert('Login correcto', '¡Bienvenido!');
+          if (userByEmail.role === 'admin') {
+            router.replace('/screens/homeAdmin');
+          } else {
+            router.replace('/');
+          }
+          return;
+        }
+      }
+
       Alert.alert('Login correcto', '¡Bienvenido!');
       
-      // Redirigir a homeAdmin
-      router.replace('/screens/homeAdmin');
+      // Redirigir si el role es admin
+      if (userData.role === 'admin') {
+        router.replace('/screens/homeAdmin');
+      } else {
+        router.replace('/');
+      }
 
     } catch (error) {
       setLoading(false);
