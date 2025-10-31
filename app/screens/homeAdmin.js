@@ -1,3 +1,4 @@
+
 import { useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -5,12 +6,12 @@ export default function HomeAdmin() {
   const router = useRouter();
 
   const handleProximosHorarios = () => {
-    // Por ahora no redirige a ninguna página
-    Alert.alert('Información', 'Funcionalidad en desarrollo');
+    router.push('/screens/generarHorarios') 
   };
 
   const handleAltaUsuario = () => {
-    Alert.alert('Alta Usuario', 'Funcionalidad en desarrollo');
+    // ✅ NUEVA FUNCIONALIDAD: Navegar a pantalla de alta
+    router.push('/screens/altaUsuarios');
   };
 
   const handleBajaUsuario = () => {

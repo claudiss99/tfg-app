@@ -1,134 +1,185 @@
+// app/screens/login.js (SIMPLIFICADO)
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Button, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../supabaseClient';
 
-export default function LoginScreen() {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
-    setLoading(true);
+  // En app/screens/login.js, actualizar la función handleLogin:
+
+// En app/screens/login.js, reemplazar la función handleLogin:
+
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert('Error', 'Por favor completa todos los campos');
+    return;
+  }
+
+  setCargando(true);
+  
+  try {
+    // ✅ DEBUGGING DETALLADO
+    console.log('🔐 === INICIO DE LOGIN ===');
+    console.log('📧 Email crudo:', `"${email}"`);
+    console.log('📧 Email length:', email.length);
+    console.log('🔑 Password crudo:', `"${password}"`);
+    console.log('🔑 Password length:', password.length);
     
-    try {
-      // Autenticar usuario
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        Alert.alert('Login fallido', authError.message);
-        setLoading(false);
-        return;
-      }
-
-      const userId = authData.user.id;
-      console.log('=== DEBUG INFO ===');
-      console.log('Auth User ID:', userId);
-      console.log('Auth User Email:', authData.user.email);
-
-      // Verificar qué usuarios existen en la tabla
-      const { data: allUsers, error: allUsersError } = await supabase
-        .from('usuarios')
-        .select('id, email, role');
-      
-      console.log('Todos los usuarios en la tabla:', allUsers);
-      console.log('Error al obtener todos los usuarios:', allUsersError);
-
-      // Buscar el usuario específico
-      const { data: userData, error: userError } = await supabase
-        .from('usuarios')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      console.log('Datos del usuario específico:', userData);
-      console.log('Error del usuario específico:', userError);
-
-      setLoading(false);
-
-      if (userError) {
-        console.error('Error obteniendo datos del usuario:', userError);
-        
-        const { data: userByEmail, error: emailError } = await supabase
-          .from('usuarios')
-          .select('id, role')
-          .eq('email', authData.user.email)
-          .single();
-        
-        console.log('Búsqueda por email:', userByEmail);
-        console.log('Error búsqueda por email:', emailError);
-        
-        if (emailError) {
-          Alert.alert('Error', 'Usuario no encontrado en la base de datos');
-          return;
-        } else {
-          Alert.alert('Login correcto', '¡Bienvenido!');
-          if (userByEmail.role === 'admin') {
-            router.replace('/screens/homeAdmin');
-          } else {
-            router.replace('/');
-          }
-          return;
-        }
-      }
-
-      Alert.alert('Login correcto', '¡Bienvenido!');
-      
-      // Redirigir si el role es admin
-      if (userData.role === 'admin') {
-        router.replace('/screens/homeAdmin');
-      } else {
-        router.replace('/');
-      }
-
-    } catch (error) {
-      setLoading(false);
-      Alert.alert('Error', 'Ocurrió un error inesperado');
-      console.error('Error en login:', error);
+    // Limpiar datos
+    const emailLimpio = email.trim().toLowerCase();
+    const passwordLimpio = password.trim();
+    
+    console.log('📧 Email limpio:', `"${emailLimpio}"`);
+    console.log('🔑 Password limpio:', `"${passwordLimpio}"`);
+    
+    // Verificar que no están vacíos después de limpiar
+    if (!emailLimpio || !passwordLimpio) {
+      Alert.alert('Error', 'Email o contraseña vacíos después de limpiar');
+      return;
     }
-  };
+    
+    console.log('🚀 Enviando request a Supabase...');
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailLimpio,
+      password: passwordLimpio,
+    });
+
+    console.log('📥 Respuesta de Supabase:');
+    console.log('✅ Data:', data);
+    console.log('❌ Error:', error);
+
+    if (error) {
+      console.error('❌ ERROR COMPLETO:', JSON.stringify(error, null, 2));
+      Alert.alert(
+        'Error de login', 
+        `Detalles del error:
+        
+Código: ${error.status || 'N/A'}
+Mensaje: ${error.message || 'Sin mensaje'}
+Tipo: ${error.name || 'Sin tipo'}
+
+Email usado: ${emailLimpio}
+Password length: ${passwordLimpio.length}
+
+¿Es correcta esta información?`
+      );
+      return;
+    }
+
+    console.log('✅ Login exitoso para:', data.user.email);
+
+    // Verificar rol
+    const { data: usuario, error: errorUsuario } = await supabase
+      .from('usuarios')
+      .select('rol')
+      .eq('id', data.user.id)
+      .single();
+
+    if (errorUsuario) {
+      console.error('❌ Error obteniendo rol:', errorUsuario);
+      Alert.alert('Error', 'No se pudo verificar el rol del usuario');
+      return;
+    }
+
+    console.log('👤 Rol del usuario:', usuario.rol);
+
+    // Navegar según el rol
+    if (usuario?.rol === 'admin') {
+      router.replace('/screens/homeAdmin');
+    } else {
+      router.replace('/screens/homeEmpleado');
+    }
+
+  } catch (error) {
+    console.error('❌ ERROR DE CATCH:', error);
+    Alert.alert('Error', 'Error inesperado: ' + error.message);
+  } finally {
+    setCargando(false);
+  }
+};
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Login</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>🔐 Iniciar Sesión</Text>
+
       <TextInput
+        style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#9CA3AF"
         value={email}
         onChangeText={setEmail}
-        autoCapitalize="none"
         keyboardType="email-address"
-        style={{
-          width: '100%',
-          borderWidth: 1,
-          borderColor: '#ccc',
-          borderRadius: 8,
-          padding: 10,
-          marginBottom: 12,
-        }}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
+
       <TextInput
+        style={styles.input}
         placeholder="Contraseña"
+        placeholderTextColor="#9CA3AF"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        style={{
-          width: '100%',
-          borderWidth: 1,
-          borderColor: '#ccc',
-          borderRadius: 8,
-          padding: 10,
-          marginBottom: 12,
-        }}
       />
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <Button title="Entrar" onPress={handleLogin} />
-      )}
+
+      <TouchableOpacity
+        style={[styles.button, cargando && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={cargando}
+      >
+        {cargando ? (
+          <ActivityIndicator color="white" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>Iniciar Sesión</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    marginBottom: 15,
+    backgroundColor: 'white',
+    color: '#333',
+  },
+  button: {
+    backgroundColor: '#2196F3',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
